@@ -39,12 +39,26 @@ body <- dashboardBody(
       
       # leaflet box ----
       tags$style(type = "text/css", "#dam_map_output {height: calc(100vh - 80px) !important;}"), # expand map to whole page
-      leafletOutput("dam_map_output") # END leaflet box
+      leafletOutput("dam_map_output", width = "100%", height = "100%"), # END leaflet box
+      
+      # absolutePanel ----
+      absolutePanel(draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
+                    width = 330, height = "auto",
+                    sliderInput("range", "Magnitudes", min(quakes$mag), max(quakes$mag),
+                                value = range(quakes$mag), step = 0.1
+                    ),
+                    selectInput("colors", "Color Scheme",
+                                rownames(subset(brewer.pal.info, category %in% c("seq", "div")))
+                    ),
+                    checkboxInput("legend", "Show legend", TRUE),
+                    plotOutput("histCentile", height = 200),
+                    plotOutput("scatterCollegeIncome", height = 250)
+      ) # END absolutePanel
       
     ) # END map tabItem
     
-  )# END tabItems
-  
+  ) # END tabItems
+
 ) # END dashboardBody
 
 # ---- combine all into dashboardPage ----

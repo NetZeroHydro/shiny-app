@@ -51,7 +51,7 @@ body <- dashboardBody(
                                 rownames(subset(brewer.pal.info, category %in% c("seq", "div")))
                     ),
                     checkboxInput("legend", "Show legend", TRUE),
-                    plotOutput("histCentile", height = 200),
+                    plotOutput("barplot", height = 200),
                     plotOutput("scatterCollegeIncome", height = 250)
       ) # END absolutePanel
       

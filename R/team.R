@@ -70,9 +70,44 @@ team_ui <- function(id) {
         student_card(
           img          = "img/lucian.png",
           name         = "Lucian Scher",
+          email        = "lucianscher@gmail.com",
           github_url   = "https://github.com/lucianbluescher",
           website_url  = "https://lucianbluescher.com/",
           linkedin_url = "https://www.linkedin.com/in/lucianscher/"
+        )
+      ),
+      
+      # ---- Faculty Advisor ----
+      tags$div(
+        class = "team-section-header",
+        style = "margin-top: 48px;",
+        tags$h2(class = "team-section-title team-section-title-lg", "Advisor")
+      ),
+      
+      tags$div(
+        class = "advisor-grid",
+        advisor_card(
+          img          = "img/rafael.png",
+          name         = "Dr. Rafael J. P. Schmitt",
+          title        = "Assistant Professor, Environmental Studies Program",
+          affiliation  = "University of California, Santa Barbara",
+          bio          = "Dr. Schmitt's research concerns interconnections between river systems
+                          and societies, with a special focus on sustainable water infrastructure
+                          and the Water-Energy-Food-Ecosystem Nexus. Working across scales and
+                          geographic regions, he leverages his background in hydrology, fluvial
+                          geomorphology, water resources engineering, and information technology
+                          to develop novel and interdisciplinary approaches to pressing
+                          environmental challenges. Beyond authoring nearly 40 peer-reviewed
+                          papers, Dr. Schmitt has worked with multi-lateral organizations,
+                          governments, and non-profit organizations to make his research
+                          decision-relevant. He holds a B.Sc. in Environmental Science, a M.Sc.
+                          in Environmental Engineering (ETH Zurich), and a Ph.D. in Information
+                          Technology (Politecnico di Milano).",
+          url          = "https://es.ucsb.edu/people/rafael-jp-schmitt",
+          email        = "schmittrjp@gmail.com",
+          github_url   = "https://github.com/schmittrjp",
+          website_url  = "https://www.riversystem.science/people/",
+          linkedin_url = "https://www.linkedin.com/in/rafaeljanschmitt/"
         )
       ),
 

@@ -5,50 +5,21 @@
 
 dams_ui <- function(id) {
   ns <- NS(id)
-
+  
   tagList(
     # Expand map to fill entire panel (subtract navbar height)
-    tags$style(type = "text/css",
-      paste0("#", ns("dam_map_output"),
-             " {height: calc(100vh - 62px) !important;}")),
-
-    # Full-width leaflet map
-    leafletOutput(ns("dam_map_output"), width = "100%", height = "100%"),
-
+    tags$style(type = "text/css", "#dam_map_output {height: calc(100vh - 80px) !important;}"),
+    # Full-width leaflet map,
+    leafletOutput("dam_map_output", width = "100vh", height = "100vh"),
+    
     # Draggable control panel
-    absolutePanel(
-      draggable = TRUE,
-      top    = 70,
-      left   = "auto",
-      right  = 20,
-      bottom = "auto",
-      width  = 330,
-      height = "auto",
-      class  = "dam-control-panel",
-
-      tags$h4(class = "dam-panel-title",
-              tags$i(class = "fas fa-filter"), " Filter Dams"),
-
-      sliderInput(
-        ns("range"),
-        label = "Magnitude Range",
-        min   = min(quakes$mag),
-        max   = max(quakes$mag),
-        value = range(quakes$mag),
-        step  = 0.1
-      ),
-
-      selectInput(
-        ns("colors"),
-        label   = "Color Scheme",
-        choices = rownames(subset(brewer.pal.info,
-                                  category %in% c("seq", "div")))
-      ),
-
-      checkboxInput(ns("legend"), "Show legend", TRUE),
-
-      plotOutput(ns("histCentile"),          height = 200),
-      plotOutput(ns("scatterCollegeIncome"), height = 250)
+    absolutePanel(draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
+                  width = 330, height = "auto",
+                  selectInput("cascade_threshold", "Cascade Threshold:", 
+                              choices = unique(results_sf$threshold_k)
+                  ),
+                  plotOutput("connectivity_bar", height = 250),
+                  plotOutput("capacity_bar", height = 250)
     )
   )
 }
@@ -56,81 +27,50 @@ dams_ui <- function(id) {
 dams_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
+    
     # ---- Reactive filtered data ----
-    filteredData <- reactive({
-      quakes[quakes$mag >= input$range[1] &
-               quakes$mag <= input$range[2], ]
+    filtered_data <- reactive({
+      results_sf %>% filter(threshold_k == input$cascade_threshold)
     })
-
-    # ---- Colour palette ----
-    colorpal <- reactive({
-      colorNumeric(input$colors, quakes$mag)
-    })
-
+    
     # ---- Base map ----
     output$dam_map_output <- renderLeaflet({
-      leaflet(quakes) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        fitBounds(~min(long), ~min(lat), ~max(long), ~max(lat))
+      
+      leafletProxy(data = filtered_data()) %>% 
+        addProviderTiles(providers$Esri.WorldPhysical) %>% # Tile 
+        # Add Markers
+        addCircleMarkers(
+          radius = 1,
+          # color by connectivity category
+          color = ~pal(filtered_data()$connectivity_category),
+          # Pop up messages
+          popup = paste0(
+            "<b>Dam_ID: ", filtered_data()$dam_id, "</b><br>", 
+            "<b>Connectivity Category: </b>", filtered_data()$connectivity_category, "<br>", 
+            "<b>CSI: </b>", filtered_data()$csi, "<br>", 
+            "<b>In a PA: </b>", filtered_data()$in_protected_area, "<br>",
+            "<b>Capacity: </b>", filtered_data()$capacity_mw, "mw", "<br>",
+            "<b> Weighted Sum Model Score: </b>", round(filtered_data()$wsm_scores, 3)
+          ))
     })
-
-    # ---- Update circles on filter change ----
-    observe({
-      pal <- colorpal()
-      leafletProxy(ns("dam_map_output"), data = filteredData()) %>%
-        clearShapes() %>%
-        addCircles(
-          radius      = ~10^mag / 10,
-          weight      = 1,
-          color       = "#333",
-          fillColor   = ~pal(mag),
-          fillOpacity = 0.7,
-          popup       = ~paste0("<b>Magnitude:</b> ", mag,
-                                "<br/><b>Depth:</b> ", depth, " km")
-        )
+    
+    # ---- ggplots ----
+    output$connectivity_bar <- renderPlot({
+      filtered_data() %>% 
+        filter(dam_type == "future") %>% 
+        ggplot(aes(y = connectivity_category, fill = connectivity_category)) + 
+        geom_bar() +
+        scale_fill_manual(values = connectivity_cat_pal) +
+        theme_minimal()
     })
-
-    # ---- Legend ----
-    observe({
-      proxy <- leafletProxy(ns("dam_map_output"), data = quakes)
-      proxy %>% clearControls()
-      if (input$legend) {
-        pal <- colorpal()
-        proxy %>% addLegend(
-          position = "bottomleft",
-          pal      = pal,
-          values   = ~mag,
-          title    = "Magnitude"
-        )
-      }
+    
+    output$capacity_bar <- renderPlot({
+      filtered_data() %>% 
+        filter(dam_type == "future") %>% 
+        ggplot(aes(y = connectivity_category, x = capacity_mw, fill = connectivity_category)) +
+        geom_col() +
+        scale_fill_manual(values = connectivity_cat_pal) +
+        theme_minimal()
     })
-
-    # ---- Histogram ----
-    output$histCentile <- renderPlot({
-      if (nrow(filteredData()) == 0) return(NULL)
-      mag <- filteredData()$mag
-      par(mar = c(3, 3, 1, 1), bg = "white")
-      hist(mag,
-           col    = "#2E5AA7",
-           border = "white",
-           main   = "",
-           xlab   = "Magnitude",
-           breaks = 12)
-      abline(v = mean(mag), col = "#FFA62B", lwd = 2, lty = 2)
-    }, bg = "white")
-
-    # ---- Scatter ----
-    output$scatterCollegeIncome <- renderPlot({
-      if (nrow(filteredData()) == 0) return(NULL)
-      d <- filteredData()
-      par(mar = c(4, 4, 1, 1), bg = "white")
-      plot(d$depth, d$mag,
-           pch   = 19,
-           col   = adjustcolor("#2E5AA7", alpha.f = 0.5),
-           xlab  = "Depth (km)",
-           ylab  = "Magnitude",
-           main  = "")
-    }, bg = "white")
   })
 }
